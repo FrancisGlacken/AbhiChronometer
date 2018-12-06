@@ -121,7 +121,7 @@ public class MainActivity extends AppCompatActivity {
         editor.apply();
     }
 
-    // Saved stuff to sharedPrefs 
+    // Saved stuff to sharedPrefs
     @Override
     protected void onDestroy() {
         super.onDestroy();
