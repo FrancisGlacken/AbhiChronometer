@@ -10,51 +10,58 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
 import android.widget.Chronometer;
+import android.widget.Toast;
 
 public class MainActivity extends AppCompatActivity {
 
     Chronometer simpleChronometer;
     Button start, stop, restart, setFormat, clearFormat;
-    long totalTime;
+    long totalTime, timeAfterlife, timeOnDestroy, timeOnCreate;
     Boolean timerRunning = false;
 
     private static final String PREFS_FILE_MAIN = "mySharedPreferences";
     private static final int PREFS_MODE_MAIN = Context.MODE_PRIVATE;
     private static final String totalTimeKey = "com.deltorostudios.abhichronometer.GreenKey";
     private static final String timerRunningKey = "com.deltorostudios.abhichronometer.BlueKey";
+    private static final String timeOnDestroyKey = "com.deltorostudios.abhichronometer.RedKey";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        // initiate views
-        simpleChronometer = (Chronometer) findViewById(R.id.simpleChronometer);
-        start = (Button) findViewById(R.id.startButton);
-        stop = (Button) findViewById(R.id.stopButton);
-        restart = (Button) findViewById(R.id.restartButton);
 
+        // Initiate Views.
+        simpleChronometer = findViewById(R.id.simpleChronometer);
+        start = findViewById(R.id.startButton);
+        stop = findViewById(R.id.stopButton);
+        restart = findViewById(R.id.restartButton);
+
+        // Use sharedPrefs to get saved data or set them to defaults
         SharedPreferences prefs = getSharedPreferences(PREFS_FILE_MAIN, PREFS_MODE_MAIN);
         totalTime = prefs.getLong(totalTimeKey, 0);
+        timeOnDestroy = prefs.getLong(timeOnDestroyKey, 0);
         timerRunning = prefs.getBoolean(timerRunningKey, false);
 
-        Log.i("testingWithPower","onCreate: totalTime = " + totalTime + "  --  timerRunning = " + timerRunning);
-
-
+        // If timer is running
         if (timerRunning) {
-            simpleChronometer.setBase(SystemClock.elapsedRealtime() - totalTime);
+
+            // Make timeAfterlife equal the the time the app was terminated
+            timeOnCreate = SystemClock.elapsedRealtime();
+            timeAfterlife = timeOnCreate - timeOnDestroy;
+
+            // Set chronometer base to current elapsedRT minus the totalTime before app termination minus
+            // Thus allowing our timer to be accurate after app reincarnation
+            simpleChronometer.setBase(SystemClock.elapsedRealtime() - totalTime - timeAfterlife);
             simpleChronometer.start();
         } else {
             simpleChronometer.setBase(SystemClock.elapsedRealtime() - totalTime);
         }
 
-        // perform click  event on start button to start a chronometer
+        // OnClick for start button
         start.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View v) {
-                Log.i("testingWithPower","Start: "+(SystemClock.elapsedRealtime() - simpleChronometer.getBase()));
-
-
                 simpleChronometer.setBase(SystemClock.elapsedRealtime() - totalTime);
                 simpleChronometer.start();
 
@@ -64,17 +71,11 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
-        // perform click  event on stop button to stop the chronometer
+        // OnClick for stop button
         stop.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View v) {
-                Log.i("testingWithPower","Stop: "+(SystemClock.elapsedRealtime() - simpleChronometer.getBase()));
-
-
-
-
-
                 totalTime = SystemClock.elapsedRealtime() - simpleChronometer.getBase();
                 simpleChronometer.stop();
 
@@ -83,46 +84,58 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        // perform click  event on restart button to set the base time on chronometer
+        // OnClick for restart button
         restart.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View v) {
-                Log.i("testingWithPower","Restart before: "+(SystemClock.elapsedRealtime() - simpleChronometer.getBase()));
-
-
-
-
                 simpleChronometer.stop();
                 simpleChronometer.setBase(SystemClock.elapsedRealtime());
                 totalTime = 0;
+                timeOnDestroy = 0;
+                timeOnCreate = 0;
+                timeAfterlife = 0;
 
                 // timer Paused
                 timerRunning = false;
-
-                Log.i("testingWithPower","Restart after: "+(SystemClock.elapsedRealtime() - simpleChronometer.getBase()));
             }
         });
 
     }
 
+    // Saved stuff to sharedPrefs
     @Override
     protected void onPause() {
         super.onPause();
 
-        Log.i("testingWithPower","OnPause: "+(SystemClock.elapsedRealtime() - simpleChronometer.getBase()));
-
         if (timerRunning) {
             totalTime = SystemClock.elapsedRealtime() - simpleChronometer.getBase();
+            timeOnDestroy = SystemClock.elapsedRealtime();
         }
-
 
         SharedPreferences prefs = getSharedPreferences(PREFS_FILE_MAIN, PREFS_MODE_MAIN);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putLong(totalTimeKey, totalTime);
+        editor.putLong(timeOnDestroyKey, timeOnDestroy);
         editor.putBoolean(timerRunningKey, timerRunning);
         editor.apply();
     }
 
+    // Saved stuff to sharedPrefs 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
 
+        if (timerRunning) {
+            totalTime = SystemClock.elapsedRealtime() - simpleChronometer.getBase();
+            timeOnDestroy = SystemClock.elapsedRealtime();
+        }
+
+        SharedPreferences prefs = getSharedPreferences(PREFS_FILE_MAIN, PREFS_MODE_MAIN);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putLong(totalTimeKey, totalTime);
+        editor.putLong(timeOnDestroyKey, timeOnDestroy);
+        editor.putBoolean(timerRunningKey, timerRunning);
+        editor.apply();
+    }
 }
